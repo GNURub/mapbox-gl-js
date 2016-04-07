@@ -150,7 +150,7 @@ util.extend(Worker.prototype, {
 
         if (loaded && loaded[uid]) {
             var tile = loaded[uid];
-            var result = tile.redoPlacement(params.angle, params.pitch, params.showCollisionBoxes);
+            var result = tile.redoPlacement(params.angle, params.pitch, params.showCollisionBoxes, params.center);
 
             if (result.result) {
                 callback(null, result.result, result.transferables);

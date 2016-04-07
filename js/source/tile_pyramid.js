@@ -408,8 +408,8 @@ TilePyramid.prototype = {
             var coord = TileCoord.fromID(ids[i]);
 
             var tileSpaceBounds = [
-                coordinateToTilePoint(coord, tile.sourceMaxZoom, new Coordinate(minX, minY, z)),
-                coordinateToTilePoint(coord, tile.sourceMaxZoom, new Coordinate(maxX, maxY, z))
+                TileCoord.coordinateToTilePoint(coord, tile.sourceMaxZoom, new Coordinate(minX, minY, z)),
+                TileCoord.coordinateToTilePoint(coord, tile.sourceMaxZoom, new Coordinate(maxX, maxY, z))
             ];
 
             if (tileSpaceBounds[0].x < EXTENT && tileSpaceBounds[0].y < EXTENT &&
@@ -417,7 +417,7 @@ TilePyramid.prototype = {
 
                 var tileSpaceQueryGeometry = [];
                 for (var j = 0; j < queryGeometry.length; j++) {
-                    tileSpaceQueryGeometry.push(coordinateToTilePoint(coord, tile.sourceMaxZoom, queryGeometry[j]));
+                    tileSpaceQueryGeometry.push(TileCoord.coordinateToTilePoint(coord, tile.sourceMaxZoom, queryGeometry[j]));
                 }
 
                 var tileResult = tileResults[tile.coord.id];
@@ -441,22 +441,6 @@ TilePyramid.prototype = {
         return results;
     }
 };
-
-/**
- * Convert a coordinate to a point in a tile's coordinate space.
- * @param {Coordinate} tileCoord
- * @param {Coordinate} coord
- * @returns {Object} position
- * @private
- */
-function coordinateToTilePoint(tileCoord, sourceMaxZoom, coord) {
-    var zoomedCoord = coord.zoomTo(Math.min(tileCoord.z, sourceMaxZoom));
-    return {
-        x: (zoomedCoord.column - (tileCoord.x + tileCoord.w * Math.pow(2, tileCoord.z))) * EXTENT,
-        y: (zoomedCoord.row - tileCoord.y) * EXTENT
-    };
-
-}
 
 function compareKeyZoom(a, b) {
     return (a % 32) - (b % 32);

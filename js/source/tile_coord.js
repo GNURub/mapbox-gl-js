@@ -2,6 +2,7 @@
 
 var assert = require('assert');
 var Coordinate = require('../geo/coordinate');
+var EXTENT = require('../data/bucket').EXTENT;
 
 module.exports = TileCoord;
 
@@ -175,3 +176,19 @@ TileCoord.cover = function(z, bounds, actualZ) {
         return t[id];
     });
 };
+
+/**
+ * Convert a coordinate to a point in a tile's coordinate space.
+ * @param {Coordinate} tileCoord
+ * @param {Number} sourceMaxZom
+ * @param {Coordinate} coord
+ * @returns {Object} position
+ */
+TileCoord.coordinateToTilePoint = function(tileCoord, sourceMaxZoom, coord) {
+    var zoomedCoord = coord.zoomTo(Math.min(tileCoord.z, sourceMaxZoom));
+    return {
+        x: (zoomedCoord.column - (tileCoord.x + tileCoord.w * Math.pow(2, tileCoord.z))) * EXTENT,
+        y: (zoomedCoord.row - tileCoord.y) * EXTENT
+    };
+};
+

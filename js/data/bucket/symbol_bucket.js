@@ -331,7 +331,7 @@ SymbolBucket.prototype.anchorIsTooClose = function(text, repeatDistance, anchor)
     return false;
 };
 
-SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxes) {
+SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxes, center) {
     this.recalculateStyleLayers();
 
     // Calculate which labels can be shown and when they can be shown and
@@ -375,6 +375,15 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
             var aRotated = (sin * a.x + cos * a.y) | 0;
             var bRotated = (sin * b.x + cos * b.y) | 0;
             return (aRotated - bRotated) || (b.index - a.index);
+        });
+    }
+
+    // @TODO: needs a layout mode, e.g. layout['text-placement-priority'] === 'center'
+    if (center) {
+        this.symbolInstances.sort(function(a, b) {
+            var distA = Math.sqrt(Math.pow(a.x - center.x, 2) + Math.pow(a.y - center.y, 2));
+            var distB = Math.sqrt(Math.pow(b.x - center.x, 2) + Math.pow(b.y - center.y, 2));
+            return distA - distB;
         });
     }
 

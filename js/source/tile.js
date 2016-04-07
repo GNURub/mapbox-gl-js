@@ -9,6 +9,7 @@ var GeoJSONFeature = require('../util/vectortile_to_geojson');
 var featureFilter = require('feature-filter');
 var CollisionTile = require('../symbol/collision_tile');
 var CollisionBoxArray = require('../symbol/collision_box');
+var coordinateToTilePoint = require('./tile_coord.js').coordinateToTilePoint;
 
 module.exports = Tile;
 
@@ -118,6 +119,11 @@ Tile.prototype = {
             source: source.id,
             angle: source.map.transform.angle,
             pitch: source.map.transform.pitch,
+            center: coordinateToTilePoint(
+                this.coord,
+                this.sourceMaxZoom,
+                source.map.transform.locationCoordinate(source.map.transform.center)
+            ),
             showCollisionBoxes: source.map.showCollisionBoxes
         }, done.bind(this), this.workerID);
 

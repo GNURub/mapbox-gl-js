@@ -192,7 +192,7 @@ WorkerTile.prototype.parse = function(data, layerFamilies, actor, rawTileData, c
         tile.status = 'done';
 
         if (tile.redoPlacementAfterDone) {
-            tile.redoPlacement(tile.angle, tile.pitch, null);
+            tile.redoPlacement(tile.angle, tile.pitch, null, null);
             tile.redoPlacementAfterDone = false;
         }
 
@@ -214,7 +214,7 @@ WorkerTile.prototype.parse = function(data, layerFamilies, actor, rawTileData, c
     }
 };
 
-WorkerTile.prototype.redoPlacement = function(angle, pitch, showCollisionBoxes) {
+WorkerTile.prototype.redoPlacement = function(angle, pitch, showCollisionBoxes, center) {
     if (this.status !== 'done') {
         this.redoPlacementAfterDone = true;
         this.angle = angle;
@@ -226,7 +226,7 @@ WorkerTile.prototype.redoPlacement = function(angle, pitch, showCollisionBoxes) 
     var buckets = this.symbolBuckets;
 
     for (var i = buckets.length - 1; i >= 0; i--) {
-        buckets[i].placeFeatures(collisionTile, showCollisionBoxes);
+        buckets[i].placeFeatures(collisionTile, showCollisionBoxes, center);
     }
 
     var collisionTile_ = collisionTile.serialize();
