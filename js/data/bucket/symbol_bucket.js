@@ -378,6 +378,10 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         });
     }
 
+    // For storing and deduping instances of text symbols by text string
+    // when layout['text-unique'] is enabled.
+    var blockPlacement = {};
+
     for (var p = 0; p < this.symbolInstances.length; p++) {
         var symbolInstance = this.symbolInstances[p];
         var hasText = symbolInstance.hasText;
@@ -386,6 +390,11 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         var iconWithoutText = layout['text-optional'] || !hasText,
             textWithoutIcon = layout['icon-optional'] || !hasIcon;
 
+        // If text placement is blocked and an icon cannot be placed without
+        // the text noop and continue early.
+        if (hasText && blockPlacement[symbolInstance.text] && !iconWithoutText) {
+            continue;
+        }
 
         // Calculate the scales at which the text and icon can be placed without collision.
 
@@ -412,11 +421,13 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
 
 
         // Insert final placement into collision tree and add glyphs/icons to buffers
-
-        if (hasText) {
+        if (hasText && !blockPlacement[symbolInstance.text]) {
             collisionTile.insertCollisionFeature(symbolInstance.textCollisionFeature, glyphScale, layout['text-ignore-placement']);
             if (glyphScale <= maxScale) {
                 this.addSymbols('glyph', symbolInstance.glyphQuads, glyphScale, layout['text-keep-upright'], textAlongLine, collisionTile.angle);
+                if (layout['text-unique']) {
+                    blockPlacement[symbolInstance.text] = true;
+                }
             }
         }
 
@@ -546,6 +557,7 @@ function SymbolInstance(anchor, line, shapedText, shapedIcon, layout, addToBuffe
     this.index = index;
     this.hasText = !!shapedText;
     this.hasIcon = !!shapedIcon;
+    this.text = (shapedText && shapedText.text) || '';
 
     if (this.hasText) {
         this.glyphQuads = addToBuffers ? getGlyphQuads(anchor, shapedText, textBoxScale, line, layout, textAlongLine) : [];

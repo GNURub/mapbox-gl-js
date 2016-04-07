@@ -19,7 +19,7 @@
     "grid-index": "^0.1.0",
     "mapbox-gl-function": "^1.2.1",
     "mapbox-gl-js-supported": "^1.1.0",
-    "mapbox-gl-style-spec": "^8.6.0",
+    "mapbox-gl-style-spec": "https://github.com/mapbox/mapbox-gl-style-spec/tarball/labelquest",
     "minifyify": "^7.0.1",
     "pbf": "^1.3.2",
     "pngjs": "^2.2.0",
