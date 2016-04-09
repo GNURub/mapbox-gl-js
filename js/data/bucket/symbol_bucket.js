@@ -405,6 +405,16 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
             continue;
         }
 
+        // Calculate angle of line to camera and skip if it exceeds 45 degree range
+        // @TODO determine layout property for specifying this
+        var cameraToLineAngle = (collisionTile.angle + symbolInstance.angle + (Math.PI*0.5)) % (Math.PI*2);
+        while (cameraToLineAngle < 0) cameraToLineAngle += Math.PI*2;
+        if (cameraToLineAngle < (45/180*Math.PI) ||
+            cameraToLineAngle > (315/180*Math.PI) ||
+            (cameraToLineAngle > (135/180*Math.PI) && cameraToLineAngle < (225/180*Math.PI))) {
+            continue;
+        }
+
         // Calculate the scales at which the text and icon can be placed without collision.
 
         var glyphScale = hasText ?
@@ -567,6 +577,7 @@ function SymbolInstance(anchor, line, shapedText, shapedIcon, layout, addToBuffe
     this.hasText = !!shapedText;
     this.hasIcon = !!shapedIcon;
     this.text = (shapedText && shapedText.text) || '';
+    this.angle = anchor.angle;
 
     if (this.hasText) {
         this.glyphQuads = addToBuffers ? getGlyphQuads(anchor, shapedText, textBoxScale, line, layout, textAlongLine) : [];
