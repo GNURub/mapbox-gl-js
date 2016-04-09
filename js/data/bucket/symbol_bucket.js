@@ -379,17 +379,26 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
     }
 
     // @TODO: needs a layout mode, e.g. layout['text-placement-priority'] === 'center'
+    // When layout['text-unique'] is enabled remember previously placed
+    // instances to prioritize their placement.
+    this.byText = this.byText || {};
     if (center) {
+        var byText = this.byText;
         this.symbolInstances.sort(function(a, b) {
             var distA = Math.sqrt(Math.pow(a.x - center.x, 2) + Math.pow(a.y - center.y, 2));
             var distB = Math.sqrt(Math.pow(b.x - center.x, 2) + Math.pow(b.y - center.y, 2));
+            // 2048 is currently the hardcoded "pop" threshold
+            // This means that a previously placed label is prioritized over
+            // any others by a distance bonus of 2048 units.
+            if (byText[a.text] === a && Math.abs(collisionTile.angle - a.placedAngle) < 0.1) distA -= 2048;
+            if (byText[b.text] === b && Math.abs(collisionTile.angle - b.placedAngle) < 0.1) distB -= 2048;
             return distA - distB;
         });
     }
 
     // For storing and deduping instances of text symbols by text string
     // when layout['text-unique'] is enabled.
-    var blockPlacement = {};
+    this.byText = {};
 
     for (var p = 0; p < this.symbolInstances.length; p++) {
         var symbolInstance = this.symbolInstances[p];
@@ -401,7 +410,7 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
 
         // If text placement is blocked and an icon cannot be placed without
         // the text noop and continue early.
-        if (hasText && blockPlacement[symbolInstance.text] && !iconWithoutText) {
+        if (hasText && this.byText[symbolInstance.text] && !iconWithoutText) {
             continue;
         }
 
@@ -412,6 +421,9 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         if (cameraToLineAngle < (45/180*Math.PI) ||
             cameraToLineAngle > (315/180*Math.PI) ||
             (cameraToLineAngle > (135/180*Math.PI) && cameraToLineAngle < (225/180*Math.PI))) {
+            if (layout['text-unique'] && symbolInstance.placedAngle) {
+                this.byText[symbolInstance.text] = symbolInstance;
+            }
             continue;
         }
 
@@ -440,12 +452,13 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
 
 
         // Insert final placement into collision tree and add glyphs/icons to buffers
-        if (hasText && !blockPlacement[symbolInstance.text]) {
+        if (hasText && !this.byText[symbolInstance.text]) {
             collisionTile.insertCollisionFeature(symbolInstance.textCollisionFeature, glyphScale, layout['text-ignore-placement']);
             if (glyphScale <= maxScale) {
                 this.addSymbols('glyph', symbolInstance.glyphQuads, glyphScale, layout['text-keep-upright'], textAlongLine, collisionTile.angle);
                 if (layout['text-unique']) {
-                    blockPlacement[symbolInstance.text] = true;
+                    this.byText[symbolInstance.text] = symbolInstance;
+                    symbolInstance.placedAngle = collisionTile.angle;
                 }
             }
         }
