@@ -173,7 +173,7 @@ SymbolBucket.prototype.populateBuffers = function(collisionTile, stacks, icons) 
 
     var oneEm = 24;
     var lineHeight = layout['text-line-height'] * oneEm;
-    var maxWidth = layout['symbol-placement'] !== 'line' ? layout['text-max-width'] * oneEm : 0;
+    var maxWidth = layout['symbol-placement'] !== 'line' || layout['text-rotation-alignment'] === 'viewport' ? layout['text-max-width'] * oneEm : 0;
     var spacing = layout['text-letter-spacing'] * oneEm;
     var textOffset = [layout['text-offset'][0] * oneEm, layout['text-offset'][1] * oneEm];
     var fontstack = layout['text-font'].join(',');
