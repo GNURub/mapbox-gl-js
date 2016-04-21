@@ -379,21 +379,18 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         });
     }
 
-    // @TODO: needs a layout mode, e.g. layout['text-placement-priority'] === 'center'
-    // When layout['text-unique'] is enabled remember previously placed
-    // instances to prioritize their placement.
-
-    this.byText = this.byText || {};
-    this.anglePrev = this.anglePrev || false;
-
-    // stabilize shakycam
-    var stable = (this.anglePrev !== false ? Math.abs(collisionTile.angle-this.anglePrev) : Infinity) <= 1e-5;
-    this.anglePrev = collisionTile.angle;
-
     var lineOfSight = false;
+    // Guidance mode
+    if (layout['symbol-mode'] === 'guidance' && center) {
+        // stabilize shakycam
+        // @TODO the 500ms threshold here represents the largest interval at which
+        // placement events may occur to be considered contiguous.
+        var stable = false;
+        stable = (this.anglePrev !== undefined ? Math.abs(collisionTile.angle-this.anglePrev) : Infinity) <= 1e-5;
+        stable = stable || (this.timePrev !== undefined ? (+new Date - this.timePrev) > 500 : false);
+        this.anglePrev = collisionTile.angle;
+        this.timePrev = +new Date || 0;
 
-    if (layout['text-unique'] && center) {
-        var byText = this.byText;
         var angle = ((collisionTile.angle - (Math.PI*0.5))*-1) % Math.PI;
         while (angle < 0) angle += Math.PI;
         var sin = Math.sin(angle);
@@ -407,30 +404,34 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         var cy = c2.y-c1.y;
         var cm = (c2.x*c1.y)-(c2.y*c1.x);
         var cn = Math.sqrt(Math.pow(c2.y-c1.y,2)+Math.pow(c2.x-c1.x,2));
+
+        // Build hash of previously placed symbols
         for (var i = 0; i < this.symbolInstances.length; i++) {
             var instance = this.symbolInstances[i];
             instance.dist =
             instance.sort = Math.abs(cy*instance.x - cx*instance.y + cm)/cn;
             if (stable) {
-                if (byText[instance.text] === instance) {
+                if (instance.placed) {
                     instance.sort -= 512;
                     instance.placement = 0;
                 } else {
                     instance.placement = 0;
                 }
             } else {
-                if (byText[instance.text] === instance) {
+                if (instance.placed) {
                     instance.sort = -Infinity;
                     instance.placement = 1;
                 } else {
                     instance.placement = -1;
                 }
             }
+            instance.placed = false;
         }
         this.symbolInstances.sort(function(a, b) { return a.sort - b.sort; });
     }
 
-    this.byText = {};
+    collisionTile.byText = collisionTile.byText || {};
+
     for (var p = 0; p < this.symbolInstances.length; p++) {
         var symbolInstance = this.symbolInstances[p];
         var hasText = symbolInstance.hasText;
@@ -440,13 +441,12 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
             textWithoutIcon = layout['icon-optional'] || !hasIcon;
 
         // Skip placing this feature by text uniqueness.
-        if (hasText && this.byText[symbolInstance.text] && !iconWithoutText) {
+        if (hasText && collisionTile.byText[symbolInstance.text] && !iconWithoutText) {
             continue;
         }
 
         // Filter placement when in guidance mode.
-        // @TODO determine layout property for specifying this.
-        if (layout['text-unique'] && !allowGuidancePlacement(lineOfSight, collisionTile, symbolInstance)) {
+        if (layout['symbol-mode'] === 'guidance' && !allowGuidancePlacement(lineOfSight, collisionTile, symbolInstance)) {
             continue;
         }
 
@@ -481,8 +481,8 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
             if (glyphScale <= maxScale) {
                 this.addSymbols('glyph', symbolInstance.glyphQuads, glyphScale, layout['text-keep-upright'], textAlongLine, collisionTile.angle);
                 if (layout['text-unique']) {
-                    this.byText[symbolInstance.text] = symbolInstance;
-                    symbolInstance.placedAngle = collisionTile.angle;
+                    collisionTile.byText[symbolInstance.text] = true;
+                    symbolInstance.placed = true;
                 }
             }
         }
