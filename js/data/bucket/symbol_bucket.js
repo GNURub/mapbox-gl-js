@@ -384,7 +384,14 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
     // instances to prioritize their placement.
 
     this.byText = this.byText || {};
+    this.anglePrev = this.anglePrev || false;
+
+    // stabilize shakycam
+    var stable = (this.anglePrev !== false ? Math.abs(collisionTile.angle-this.anglePrev) : Infinity) <= 1e-5;
+    this.anglePrev = collisionTile.angle;
+
     var lineOfSight = false;
+
     if (layout['text-unique'] && center) {
         var byText = this.byText;
         var angle = ((collisionTile.angle - (Math.PI*0.5))*-1) % Math.PI;
@@ -404,15 +411,19 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
             var instance = this.symbolInstances[i];
             instance.dist =
             instance.sort = Math.abs(cy*instance.x - cx*instance.y + cm)/cn;
-            if (byText[instance.text] === instance) {
-                var angle = instance.placedAngle ? Math.abs(collisionTile.angle-instance.placedAngle) : Infinity;
-                // stabilize shakycam
-                if (angle <= 1e-5) {
+            if (stable) {
+                if (byText[instance.text] === instance) {
                     instance.sort -= 512;
-                    instance.forcePlacement = false;
-                } else if (angle > 1e-5) {
+                    instance.placement = 0;
+                } else {
+                    instance.placement = 0;
+                }
+            } else {
+                if (byText[instance.text] === instance) {
                     instance.sort = -Infinity;
-                    instance.forcePlacement = instance.forcePlacement || +new Date;
+                    instance.placement = 1;
+                } else {
+                    instance.placement = -1;
                 }
             }
         }
@@ -490,8 +501,11 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
 };
 
 function allowGuidancePlacement(lineOfSight, collisionTile, symbolInstance) {
-    // Passthrough for forced placement.
-    if (symbolInstance.forcePlacement) return true;
+    // Force placement
+    if (symbolInstance.placement === 1) return true;
+
+    // Force hide
+    if (symbolInstance.placement === -1) return false;
 
     // Calculate angle of line to camera and skip if it exceeds 45 degree range
     var angleRange = 30;
