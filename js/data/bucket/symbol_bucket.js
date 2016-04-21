@@ -491,10 +491,10 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
 
 function allowGuidancePlacement(lineOfSight, collisionTile, symbolInstance) {
     // Passthrough for forced placement.
-    if ((+new Date - (symbolInstance.forcePlacement||0)) < 1000) return true;
+    if (symbolInstance.forcePlacement) return true;
 
     // Calculate angle of line to camera and skip if it exceeds 45 degree range
-    var angleRange = 45;
+    var angleRange = 30;
     var cameraToLineAngle = (collisionTile.angle + symbolInstance.angle + (Math.PI*0.5)) % (Math.PI*2);
     while (cameraToLineAngle < 0) cameraToLineAngle += Math.PI*2;
     if (
