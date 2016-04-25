@@ -396,7 +396,9 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         } else if (recalcForTime) {
             console.log('recalcForTime', (+new Date-this.timePrev));
         }
-        this.anglePlaced = collisionTile.angle;
+        if (center) {
+            this.anglePlaced = collisionTile.angle;
+        }
     }
     this.timePrev = +new Date || 0;
 
