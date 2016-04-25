@@ -379,18 +379,61 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         });
     }
 
-    var lineOfSight = false;
-    // Guidance mode
-    if (layout['symbol-mode'] === 'guidance' && center) {
-        // stabilize shakycam
-        // @TODO the 500ms threshold here represents the largest interval at which
-        // placement events may occur to be considered contiguous.
-        var stable = false;
-        stable = (this.anglePrev !== undefined ? Math.abs(collisionTile.angle-this.anglePrev) : Infinity) <= 1e-5;
-        stable = stable || (this.timePrev !== undefined ? (+new Date - this.timePrev) > 500 : false);
-        this.anglePrev = collisionTile.angle;
-        this.timePrev = +new Date || 0;
+    // Are we travelling in a relatively stable straight line?
+    var stable = (this.anglePrev !== undefined ? Math.abs(collisionTile.angle-this.anglePrev) : Infinity) <= 1e-5;
+    this.anglePrev = collisionTile.angle;
 
+    // In order to trigger recalculation, we must be travelling straight
+    // and at an angle > threshold from previous placement
+    var recalcForAngle = stable && (this.anglePlaced !== undefined ? Math.abs(collisionTile.angle-this.anglePlaced) : Infinity) >= Math.PI*(22.5/180);
+
+    // Recalc because a placement event has not been requested in over 2s (e.g. interactive/debug mode)
+    var recalcForTime = this.timePrev !== undefined ? (+new Date - this.timePrev) > 2000 : true;
+
+    if (recalcForAngle || recalcForTime) {
+        if (recalcForAngle) {
+            console.log('recalcForAngle', (Math.abs(collisionTile.angle-this.anglePlaced)/Math.PI)*180);
+        } else if (recalcForTime) {
+            console.log('recalcForTime', (+new Date-this.timePrev));
+        }
+        this.anglePlaced = collisionTile.angle;
+    }
+    this.timePrev = +new Date || 0;
+
+    // Iron-grip placement mode
+    if (layout['symbol-mode'] === 'guidance' && !recalcForAngle && !recalcForTime) {
+        for (var p = 0; p < this.symbolInstances.length; p++) {
+            var symbolInstance = this.symbolInstances[p];
+            if (!symbolInstance.placed) continue;
+
+            var hasText = symbolInstance.hasText;
+            var hasIcon = symbolInstance.hasIcon;
+            var glyphScale = hasText ?
+                collisionTile.placeCollisionFeature(symbolInstance.textCollisionFeature,
+                        layout['text-allow-overlap'], layout['symbol-avoid-edges']) :
+                collisionTile.minScale;
+            var iconScale = hasIcon ?
+                collisionTile.placeCollisionFeature(symbolInstance.iconCollisionFeature,
+                        layout['icon-allow-overlap'], layout['symbol-avoid-edges']) :
+                collisionTile.minScale;
+
+            if (hasText) {
+                collisionTile.insertCollisionFeature(symbolInstance.textCollisionFeature, glyphScale, layout['text-ignore-placement']);
+                this.addSymbols('glyph', symbolInstance.glyphQuads, glyphScale, layout['text-keep-upright'], textAlongLine, collisionTile.angle);
+            }
+
+            if (hasIcon) {
+                collisionTile.insertCollisionFeature(symbolInstance.iconCollisionFeature, iconScale, layout['icon-ignore-placement']);
+                this.addSymbols('icon', symbolInstance.iconQuads, iconScale, layout['icon-keep-upright'], iconAlongLine, collisionTile.angle);
+            }
+        }
+        if (showCollisionBoxes) this.addToDebugBuffers(collisionTile);
+        return;
+    }
+
+    // Guidance mode
+    var lineOfSight = false;
+    if (layout['symbol-mode'] === 'guidance' && center) {
         var angle = ((collisionTile.angle - (Math.PI*0.5))*-1) % Math.PI;
         while (angle < 0) angle += Math.PI;
         var sin = Math.sin(angle);
@@ -408,26 +451,10 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
         // Build hash of previously placed symbols
         for (var i = 0; i < this.symbolInstances.length; i++) {
             var instance = this.symbolInstances[i];
-            instance.dist =
-            instance.sort = Math.abs(cy*instance.x - cx*instance.y + cm)/cn;
-            if (stable) {
-                if (instance.placed) {
-                    instance.sort -= 512;
-                    instance.placement = 0;
-                } else {
-                    instance.placement = 0;
-                }
-            } else {
-                if (instance.placed) {
-                    instance.sort = -Infinity;
-                    instance.placement = 1;
-                } else {
-                    instance.placement = -1;
-                }
-            }
+            instance.dist = Math.abs(cy*instance.x - cx*instance.y + cm)/cn;
             instance.placed = false;
         }
-        this.symbolInstances.sort(function(a, b) { return a.sort - b.sort; });
+        this.symbolInstances.sort(function(a, b) { return a.dist - b.dist; });
     }
 
     collisionTile.byText = collisionTile.byText || {};
@@ -501,12 +528,6 @@ SymbolBucket.prototype.placeFeatures = function(collisionTile, showCollisionBoxe
 };
 
 function allowGuidancePlacement(lineOfSight, collisionTile, symbolInstance) {
-    // Force placement
-    if (symbolInstance.placement === 1) return true;
-
-    // Force hide
-    if (symbolInstance.placement === -1) return false;
-
     // Calculate angle of line to camera and skip if it exceeds 45 degree range
     var angleRange = 30;
     var cameraToLineAngle = (collisionTile.angle + symbolInstance.angle + (Math.PI*0.5)) % (Math.PI*2);
