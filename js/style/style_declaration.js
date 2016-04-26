@@ -8,7 +8,7 @@ module.exports = StyleDeclaration;
 function StyleDeclaration(reference, value) {
     this.type = reference.type;
     this.transitionable = reference.transition;
-    this.value = value;
+    this.value = util.clone(value);
     this.isFunction = !!value.stops;
 
     // immutable representation of value. used for comparison
